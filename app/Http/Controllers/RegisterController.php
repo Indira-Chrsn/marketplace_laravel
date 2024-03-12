@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use Validator;
+use App\Http\Requests\RegisterPostRequest;
+use Hash;
 
 class RegisterController extends Controller
 {
@@ -17,30 +19,24 @@ class RegisterController extends Controller
      * @param [string] password
      * @return [string] message
      */
-    public function register(Request $request) {
-        $request->validate([
-            'name' => 'required|string|max:250',
-            'email' => 'required|email|unique:users',
-            'password' => 'required|string|min:8'
-        ]);
+    public function register(RegisterPostRequest $request)
+    {
+        // $request->validate([
+        //     'name' => 'required|string|max:250',
+        //     'email' => 'required|email|unique:users',
+        //     'password' => 'required|string|min:8'
+        // ]);
 
-        $user = new User([
+        $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
-            'password' => bcrypt($request->password)
+            'password' => Hash::make($request->password)
         ]);
 
-        // $user = User::create($validatedData);
-        if ($user->save()) {
-            $tokenResult = $user->createToken('Personal Access Token');
-            $token = $tokenResult->plainTextToken;
+        return response()->json([
+            'message' => 'Registration success.',
+            'data' => $user
 
-            return response()->json([
-                'message' => 'Successfully registered',
-                'accessToken' => $token
-            ], 201);
-        } else {
-            return response()->json(['error' => 'Provide proper details']);
-        }
+        ], 200);
     }
 }

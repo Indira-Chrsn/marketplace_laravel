@@ -14,18 +14,61 @@ class ProductController extends Controller
      */
     public function index(Request $request)
     {
-        $type = $request->get('type');
+        $product_query = Product::with(['category', 'brand']);
 
-        switch ($type) {
-            case 'search':
-                search($request);
-            case 'sort':
-                sort($request);
+        // search by product name
+        if ($request->keyword) {
+            $product_query->where('name', 'LIKE', '%'.$request->keyword.'%');
         }
-        // $products = Product::all();
-        // $products = Product::where('name', 'like', "I")->with('category')->get();
-        $products = Product::where('category_id', '=', 1)->paginate(3);
+
+        // search by price
+        if ($request->min_price && $request->max_price) {
+            $minPrice = $request->get('min_price', null);
+            $maxPrice = $request->get('max_price', null);
+
+            $product_query->where(function ($query) use ($minPrice, $maxPrice) {
+                if (!is_null($minPrice)) {
+                    $query->where('price', '>=', $minPrice);
+                }
+                if (!is_null($maxPrice)) {
+                    $query->where('price', '<=', $maxPrice);
+                }
+            });
+        }
+
+        // filter by category
+        if ($request->category) {
+            $product_query->whereHas('category', function($query) use($request){
+                $query->where('name', $request->category);
+            });
+        }
+
+        // filter by brands
+        if ($request->brand) {
+            $product_query->whereHas('brand', function($query) use($request) {
+                $query->where('name', $request->brand);
+            });
+        }
+
+        // sort by
+        if ($request->sortBy && in_array($request->sortBy,['id', 'name', 'price'])) {
+            $sortBy = $request->sortBy;
+        } else {
+            $sortBy = 'id';
+        }
+
+        // sort order
+        if ($request->sortOrder && in_array($request->sortOrder,['asc', 'desc'])) {
+            $sortOrder = $request->sortOrder;
+        } else {
+            $sortOrder = 'asc';
+        }
+
+        $products = $product_query->orderBy($sortBy, $sortOrder)->get();
         return response()->json(['products' => $products]);
+        // 
+        // $products = Product::where('category_id', '=', 1)->paginate(3);
+        // $products = Product::where('name', 'like', "I")->with('category')->get();
     }
 
     /**
@@ -135,78 +178,6 @@ class ProductController extends Controller
         return response()->json(['message' => 'produk berhasil ditambahkan kembali']);
     }
 
-    public function search(Request $request)
-    {
-        dd($request->all());
-        // $validatedData = $request->validate(['keyword' => 'required']);
-
-        $keyword = $request->get('keyword');
-
-        $products = Product::where('name', 'like', "%{keyword}%")->paginate(5);
-
-        // if ($request->has('price')) {
-        //     $query->where('price', $request->get('price'));
-        // }
-
-        // $products = $query->paginate(5);
-        return response()->json([
-            'products' => $products
-        ]);
-    }
-
-    public function sort(Request $request)
-    {
-        $validOrderFields = ['name', 'price'];
-        $validOrder = ['asc', 'desc'];
-
-        if (!in_array($request->get('orderField'), $validOrderFields) ||
-            !in_array($request->get('order'), $validOrder)) {
-                return response()->json(['error' => 'Invalid sort parameter'], 400);
-        }
-
-        $orderField = $request->get('orderField');
-        $order = $request->get('order');
-
-        // if ($order == "desc") {
-        //     $products = Product::orderByDesc('{$orderField}')
-        //         ->get();
-        // } else {
-        //     $products = Product::orderBy('{$orderField}')
-        //         ->get();
-        // }
-
-        $products = Product::orderBy($orderField, $order)->get();
-        
-        return response()->json(['products' => $products]);
-    }
-
-    public function filter(Request $request)
-    {
-        $validFilter = ['name', 'Category_id', 'price'];
-
-        if (!in_array($request->get('filter'), $validFilter)) {
-            return response()->json(['error' => 'invalid parameter'], 400);
-        }
-
-        $filter = $request->get('filter');
-        $filterValue = $request->get('filterValue');
-
-        $products = Product::where($filter, $filterValue)->get();
-
-        // if ($filter == "price") {
-        //     if ($request->has('bottomRange') && $request->has('upperRange')) {
-        //         $bottomRange = $request->get('bottomRange');
-        //         $upperRange = $request->get('upperRange');
-
-        //         $products = Product::where($filter, '>=', '{$bottomRange}', 'and', $filter, )
-        //     }
-        // }
-
-        return response()->json(['products' => $products]);
-    }
-
-
-
 
 
     /**
@@ -219,7 +190,7 @@ class ProductController extends Controller
      */
 
 
-    // search by name & price
+    // search by name [done] & price [done]
     // sorting asc & desc (name, price) [done]
     // filter by category [done]
     // range harga 
@@ -247,5 +218,5 @@ class ProductController extends Controller
  * 
  * array of object
  * 
- * tambahkan tabel brand + filter by + relationship w product, > 2 brand
+ * tambahkan tabel brand [done] + filter by [done] + relationship w product [done] , > 2 brand [done]
  */

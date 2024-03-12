@@ -6,18 +6,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use Validator;
+use App\Http\Requests\LoginRequest;
 
 class LoginController extends Controller
 {
-    
-
-    public function login(Request $request)
+    public function login(LoginRequest $request)
     {
-        $request->validate([
-            'email' => 'required|string|email',
-            'password' => 'required|string',
-            'remember_me' => 'boolean'
-        ]);
 
         $credentials = request(['email','password']);
         if (!Auth::attempt($credentials)) {
@@ -27,12 +21,14 @@ class LoginController extends Controller
         }
 
         $user = $request->user();
+
         $tokenResult = $user->createToken('Personal Access Token');
         $token = $tokenResult->plainTextToken;
 
         return response()->json([
             'accessToken' => $token,
-            'token_type' => 'Bearer'
+            'token_type' => 'Bearer',
+            'data' => $user
         ]);
     }
 
@@ -53,7 +49,7 @@ class LoginController extends Controller
      */
     public function logout(Request $request)
     {
-        $request->user()->tokens()->delete();
+        $request->user()->currentAccessToken()->delete();
 
         return response()->json([
             'message' => 'Successfully logged out'
