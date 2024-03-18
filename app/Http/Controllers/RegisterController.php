@@ -5,9 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
-use Validator;
-use App\Http\Requests\RegisterPostRequest;
-use Hash;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Hash;
 
 class RegisterController extends Controller
 {
@@ -19,13 +18,18 @@ class RegisterController extends Controller
      * @param [string] password
      * @return [string] message
      */
-    public function register(RegisterPostRequest $request)
+    public function register(Request $request)
     {
-        // $request->validate([
-        //     'name' => 'required|string|max:250',
-        //     'email' => 'required|email|unique:users',
-        //     'password' => 'required|string|min:8'
-        // ]);
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:250',
+            'email' => 'required|email|unique:users',
+            'password' => 'required|string|min:8'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['message' => "Gagal"], 500);
+        }
 
         $user = User::create([
             'name' => $request->name,

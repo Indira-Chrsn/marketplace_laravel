@@ -6,6 +6,8 @@ use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Pagination\CursorPaginator;
+use App\Http\Resources\ProductResource;
+use App\Http\Controllers\StorePostRequest;
 
 class ProductController extends Controller
 {
@@ -65,10 +67,17 @@ class ProductController extends Controller
         }
 
         $products = $product_query->orderBy($sortBy, $sortOrder)->get();
-        return response()->json(['products' => $products]);
-        // 
+        // return response()->json(['products' => $products]);
+        
+        return ProductResource::collection($products); 
+        
+        /**use collection because in index we gonna fetch a collection of data (many product model that is united in one collection)
+         
+
         // $products = Product::where('category_id', '=', 1)->paginate(3);
         // $products = Product::where('name', 'like', "I")->with('category')->get();
+
+        */
     }
 
     /**
@@ -76,20 +85,24 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
-        $validatedData = $request->validate([
+        $validator = Validator::make($request->all(), [
             'name' => 'required',
             'price' => 'required|numeric|no_negative_value',
             'stock' => 'required|integer|no_negative_value',
-            'category_id' => 'integer|no_negative_value'
+            'category_id' => 'required|integer|no_negative_value',
+            'brand_id' => 'required|integer|no_negative_value'
         ]);
-        // $validated = $request->validated();
 
-        $product = Product::create($validatedData);
+        if ($validator->fails()) {
+            return response()->json(['message' => "Gagal menambahkan produk"], 500);
+        }
+
+        $validated = $validator->validated();
+
+        $product = Product::create($validated);
 
         if ($product) {
             return response()->json(['product' => $product]);
-        } else {
-            return response()->json(['message' => "Gagal menambahkan produk"], 500);
         }
     }
 
@@ -101,7 +114,7 @@ class ProductController extends Controller
         $product = Product::find($id);
 
         if ($product) {
-            return response()->json(['product' => $product]);
+            return ProductResource::make($product)->withDetails();
         } else {
             return response()->json(['message' => 'Produk tidak ditemukan'], 404);
         }
@@ -110,16 +123,30 @@ class ProductController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(StorePostRequest $request, string $id)
+    public function update(Request $request, string $id)
     {
-        $validatedData = $request->validated();
+        // $validatedData = $request->validated();
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required',
+            'price' => 'required|numeric|no_negative_value',
+            'stock' => 'required|integer|no_negative_value',
+            'category_id' => 'integer|no_negative_value',
+            'brand_id' => 'integer|no_negative_value'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['message' => "Gagal memperbarui detail produk"], 500);
+        }
+
+        $validated = $validator->validated();
 
         $product = Product::find($id);
         if (!$product) {
             return response()->json(['message' => 'Produk tidak ditemukan'], 404);
         }
 
-        $product->update($validatedData);
+        $product->update($validated);
         return response()->json(['message' => 'produk berhasil diupdate', 'product' => $product]);
     }
 
@@ -139,36 +166,10 @@ class ProductController extends Controller
     }
 
     /**
-     * show the form to create new data
-     */
-    public function insert()
-    {
-        return view('products.create');
-    }
-
-    /**
-     * add current timestamp to deleted product without actually deleted the data
-     */
-    public function soft_delete(string $id) {
-        $product = Product::find($id);
-
-        if (!$product) {
-            return response()->json(['message' => 'produk tidak ditemukan'], 404);
-        }
-
-        $product->delete();
-        if (!$product->trashed()) {
-            return response()->json(['message' => 'produk gagal dihapus'], 500);
-        }
-
-        return response()->json(['message' => 'produk berhasil dihapus']);
-    }
-
-    /**
      * Restore soft-deleted product
      */
     public function restore(string $id) {
-        $product = Product::find($id);
+        $product = Product::withTrashed()->find($id);
 
         if (!$product) {
             return response()->json(['message' => 'produk tidak ditemukan']);

@@ -18,34 +18,22 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
-});
-
-Route::post('tokens/create', function (Request $request) {
-    $token = $request->user()->createToken($request->token_name);
-
-    return ['token' => $token->plainTextToken];
-});
-
-
-
-Route::resource('/products', ProductController::class);
 
 // Route::get('/products', [ProductController::class,'index']);
 
-Route::resource('/categories', CategoryController::class);
 
-Route::group(['prefix' => 'auth'], function () {
-    Route::post('login', [LoginController::class, 'login']);
-    Route::post('register', [RegisterController::class, 'register']);
+Route::post('login', [LoginController::class, 'login']);
+Route::post('register', [RegisterController::class, 'register']);
 
-    Route::group(['middleware' => 'auth:sanctum'], function() {
-        Route::post('logout', [LoginController::class, 'logout']);
-        Route::get('user', [LoginController::class, 'user']);
-    });
+Route::group(['middleware' => 'auth:sanctum'], function() {
+    Route::post('logout', [LoginController::class, 'logout']);
+    Route::get('user', [LoginController::class, 'user']);
+
+    Route::put('/products/{id}/restore', [ProductController::class, 'restore']);
+    Route::resource('/products', ProductController::class);
+
+    Route::put('/category/{id}/restore', [CategoryController::class, 'restore']);
+    Route::resource('/categories', CategoryController::class);
 });
 
-Route::get('search', [ProductController::class, 'search']);
-Route::get('sort', [ProductController::class, 'sort']);
-Route::get('filter', [ProductController::class, 'filter']);
+//Route::get('search', [ProductController::class, 'search']);
